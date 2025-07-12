@@ -1,0 +1,172 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telegram Chord Trainer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1a1a1a;
+      color: #f1f1f1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .chord {
+      font-size: 3em;
+      margin-bottom: 0.5em;
+    }
+    .notes, .intervals {
+      font-size: 1.5em;
+      color: #8f8;
+      margin-bottom: 0.5em;
+    }
+    button, select, input {
+      padding: 0.5em 1em;
+      font-size: 1.2em;
+      margin: 0.2em;
+      background-color: #444;
+      color: white;
+      border: none;
+      border-radius: 8px;
+    }
+    .timer {
+      margin-top: 1em;
+      font-size: 1.2em;
+      color: #aaa;
+    }
+  </style>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+  </script>
+</head>
+<body>
+  <div class="chord" id="chordDisplay">Click Start</div>
+  <div class="notes" id="notesDisplay"></div>
+  <div class="intervals" id="intervalsDisplay"></div>
+
+  <button onclick="startTrainer()">Start</button>
+  <button onclick="stopTrainer()">Stop</button>
+  <button onclick="nextChordManually()">Next Chord</button>
+  <button onclick="showNotes()">Показать ноты</button>
+  <button onclick="showIntervals()">Показать интервалы</button>
+
+  <label>
+    Timer (sec):
+    <input type="number" id="timerInput" value="10" min="1" max="60">
+  </label>
+  <label>
+    <input type="checkbox" id="useTimer" checked> Use Timer
+  </label>
+
+  <div class="timer" id="timer"></div>
+
+  <script>
+    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const chordTypes = {
+      '': [0, 4, 7],
+      'maj': [0, 4, 8],
+      'm': [0, 3, 7],
+      'dim': [0, 3, 6],
+      'aug': [0, 4, 8],
+      'aug7': [0, 2, 4, 7],
+      '7': [0, 4, 7, 10],
+      'maj7': [0, 4, 7, 11],
+      'm7': [0, 3, 7, 10],
+      'dim7': [0, 3, 6, 9],
+      'm7b5': [0, 3, 6, 10],
+      'm+7': [0, 3, 7, 11]
+    };
+
+    const intervalNames = {
+      0: '1', 1: 'м2', 2: 'б2', 3: 'м3', 4: 'б3',
+      5: 'ч4', 6: 'ум5', 7: 'ч5', 8: 'м6', 9: 'б6',
+      10: 'м7', 11: 'б7'
+    };
+
+    let intervalId;
+    let countdown;
+    let currentChord = {};
+
+    function getTertianStructure(intervals) {
+      const thirds = [];
+      for (let i = 1; i < intervals.length; i++) {
+        thirds.push(intervalNames[(intervals[i] - intervals[i - 1] + 12) % 12]);
+      }
+      return thirds.join(' + ');
+    }
+
+    function getRandomChord() {
+      const rootIndex = Math.floor(Math.random() * notes.length);
+      const root = notes[rootIndex];
+      const types = Object.keys(chordTypes);
+      const type = types[Math.floor(Math.random() * types.length)];
+      const intervals = chordTypes[type];
+      const chordNotes = intervals.map(i => notes[(rootIndex + i) % 12]);
+      const tertianStructure = getTertianStructure(intervals);
+      return {
+        name: root + type,
+        rootIndex: rootIndex,
+        notes: chordNotes,
+        intervals: tertianStructure
+      };
+    }
+
+    function showNewChord() {
+      currentChord = getRandomChord();
+      document.getElementById('chordDisplay').textContent = currentChord.name;
+      document.getElementById('notesDisplay').textContent = '';
+      document.getElementById('intervalsDisplay').textContent = '';
+      countdown = parseInt(document.getElementById('timerInput').value);
+    }
+
+    function startTrainer() {
+      const useTimer = document.getElementById('useTimer').checked;
+      showNewChord();
+      clearInterval(intervalId);
+      if (useTimer) {
+        intervalId = setInterval(() => {
+          countdown--;
+          document.getElementById('timer').textContent = `Next in ${countdown}s`;
+
+          if (countdown === 3) {
+            document.getElementById('intervalsDisplay').textContent = currentChord.intervals;
+          }
+
+          if (countdown <= 0) {
+            showNewChord();
+          }
+        }, 1000);
+      } else {
+        document.getElementById('timer').textContent = `Manual mode`;
+      }
+    }
+
+    function stopTrainer() {
+      clearInterval(intervalId);
+      document.getElementById('timer').textContent = 'Stopped';
+    }
+
+    function nextChordManually() {
+      clearInterval(intervalId);
+      document.getElementById('timer').textContent = '';
+      showNewChord();
+    }
+
+    function showNotes() {
+      document.getElementById('notesDisplay').textContent = currentChord.notes.join(' - ');
+    }
+
+    function showIntervals() {
+      document.getElementById('intervalsDisplay').textContent = currentChord.intervals;
+    }
+  </script>
+</body>
+</html>
